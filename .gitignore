@@ -2,3 +2,5 @@ node_modules/
 .env
 webhook.log
 logs/
+uploads/
+scripts/richmenu.jpg

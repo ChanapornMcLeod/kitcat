@@ -1,48 +1,53 @@
 # KitCat LINE Bot — TODO
 
-## ⚡ DO FIRST (bot won't receive messages without these)
+## ⚡ DO NOW
 
-- [ ] **Activate webhook in LINE Developers console** ← root cause of "no response" right now
-      https://developers.line.biz/console/ → channel 2011484173 → Messaging API tab →
-      Webhook URL: paste the CURRENT tunnel URL below → press **Verify** → set **Use webhook: ON**
-      Current URL: https://holdings-preservation-pizza-standards.trycloudflare.com/webhook
-      (URL changes on every restart — check `logs/bot.log` for the latest, or run `./start.sh`)
-- [ ] Turn **Auto-reply messages: OFF** (Messaging API tab, so LINE's canned replies don't compete with the bot)
-- [ ] Add bot `@967tyqzr` as friend → send "menu" → expect Flex button card 🐱
+- [ ] **Test on phone**: open KitCat chat → tap the bottom **KitCat Menu** bar
+      (✅ Service done / 📷 Send photo / 🚗 My status / 🌐 Open app) and send a photo
+- [ ] **Push commits** (sandbox can't read ~/.ssh): `cd ~/Dev/aiProjects/kitcatLine && git push`
 
-## 🔁 URL stability (recommended soon)
+## 🔌 Web app integration (the real work — waiting on YOU)
 
-- [ ] **ngrok static domain** (free account): sign up → `ngrok config add-authtoken <token>` →
-      `ngrok http 3000` gives a permanent URL → verify ONCE in console, never again.
-      (trycloudflare URLs rotate on every tunnel restart = re-Verify in console each time)
+- [ ] Provide **WEBAPP_URL** + **WEBAPP_API_TOKEN** → set in `.env`, restart bot
+- [ ] Agree on endpoints our bot will call (proposed):
+      - `POST /api/line/service-completions` — driver tapped "Service done" `{driverLineUserId, reportedAt, note}`
+      - `POST /api/line/driver-status`      — driver asked status `{driverLineUserId}` → app returns short text
+      - `POST /api/line/driver-photos`      — photo metadata (file saved locally in `uploads/`, multipart upload optional)
+- [ ] Decide auth for webapp endpoints (shared bearer token / API key / JWT)
+- [ ] Decide how staff see reports (existing web app pages? LINE notifications to staff too?)
 
-## 🖥 Machine setup (do in your own Terminal — sandbox can't touch these)
+## 🔁 URL stability (later, as agreed)
 
-- [ ] **Auto-start bot at login**:
+- [ ] ngrok static domain OR Cloudflare named tunnel + your own domain
+      ⚠️ Until then: every restart changes the tunnel URL — `./start.sh` re-registers
+      automatically, but the old verified URL dies with it (webhook needs no re-Verify
+      since registration re-activates it — keep bot running)
+
+## 🖥 Machine setup (your Terminal — sandbox blocked these)
+
+- [ ] Auto-start at login:
       ```bash
       mkdir -p ~/Library/LaunchAgents ~/Dev/aiProjects/kitcatLine/logs
       cp ~/Dev/aiProjects/kitcatLine/deploy/launchd/com.kitcat.linebot.plist ~/Library/LaunchAgents/
       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kitcat.linebot.plist
       ```
-- [ ] **Push pending commit** (sandbox can't read ~/.ssh keys):
-      ```bash
-      cd ~/Dev/aiProjects/kitcatLine && git push
-      ```
 
 ## 🔐 Hygiene
 
-- [ ] Rotate the LINE Channel Access Token (it was pasted in chat) — console → Issue new long-lived token → update `.env`
-- [ ] Keep `.env` out of git (already gitignored — verify before any manual adds)
+- [ ] Rotate the LINE Channel Access Token (pasted in chat earlier) — console → Issue new → update `.env`
+- [ ] Keep `.env` out of git (gitignored — verify before manual adds)
 
-## 🚀 Later / production
+## 🚀 Later
 
-- [ ] Move off trycloudflare (no uptime guarantee): cheapest stable option = cheap domain + Cloudflare DNS + named tunnel, or deploy to a VPS
-- [ ] Decide message-handling requirements (what should each button do? real business flows?)
-- [ ] Add rich menus (LINE native bottom-bar menu) once requirements are set
-- [ ] Persist chat history / user state if needed
+- [ ] Persist photo uploads to your storage (S3/OSS/NAS) instead of local `uploads/`
+- [ ] Rich menu v2 when requirements firm up (per-role menus? more tiles?)
+- [ ] Staff-side notifications in LINE when drivers submit reports
+- [ ] Deploy to a VPS / server for uptime
 
-## ℹ️ Status (2026-09-08)
+## ✅ DONE (2026-09-08)
 
-- Server + tunnel running: `logs/bot.log`; single-instance verified
-- Webhook endpoint registered + reachable (LINE platform test passes) but **inactive until console Verify** ← do first task above
-- GitHub: https://github.com/ChanapornMcLeod/kitcat
+- [x] Webhook live & active; messages, flex menu, quick replies working
+- [x] Rich menu bar "KitCat Menu" attached to ALL chats (4 actions)
+- [x] Action dispatcher + mock webapp layer (`callWebApp`) — add features by adding one handler
+- [x] Photo capture: images saved to `uploads/` + forwarded (mock) to web app
+- [x] git repo pushed: https://github.com/ChanapornMcLeod/kitcat

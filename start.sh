@@ -18,6 +18,7 @@ URL=""
 
 cleanup() {
   echo "Shutting down..."
+  [ -n "$WATCHDOG" ] && kill "$WATCHDOG" 2>/dev/null
   [ -n "$TUNNEL" ] && kill "$TUNNEL" 2>/dev/null
   [ -n "$SERVER" ] && kill "$SERVER" 2>/dev/null
   wait 2>/dev/null
@@ -63,11 +64,27 @@ start_tunnel_and_register() {
   return 0
 }
 
+# Watchdog: trycloudflare hostnames get reclaimed silently while cloudflared
+# keeps running happily. Probe the public URL every 5 min; on failure, kill
+# the tunnel so the loop spins up a fresh URL and re-registers it.
+watchdog() {
+  while true; do
+    sleep 300
+    if ! curl -sf -m 20 "$URL/" > /dev/null; then
+      echo "🩺 watchdog: tunnel unreachable — forcing new tunnel..."
+      kill "$TUNNEL" 2>/dev/null
+      return
+    fi
+  done
+}
+
 start_server
 while true; do
   if start_tunnel_and_register; then
     echo "🤖 Bot live. Waiting on tunnel..."
+    watchdog & WATCHDOG=$!
     wait "$TUNNEL"
+    kill "$WATCHDOG" 2>/dev/null
   else
     echo "❌ Tunnel failed to start."
   fi

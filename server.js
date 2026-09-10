@@ -55,6 +55,36 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const photoCount = new Map(); // userId -> count (demo in-memory state)
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DYNAMIC RICH MENU — the bottom bar is a static image, but WHICH menu a
+// user sees is fully dynamic: we link/unlink rich menu IDs per user at runtime.
+// IDs come from files written by scripts/setup-richmenu.js.
+// ─────────────────────────────────────────────────────────────────────────────
+const readId = (f) => { try { return fs.readFileSync(path.join(__dirname, f), "utf8").trim(); } catch { return ""; } };
+const RICH_MAIN = readId("richmenu-id.txt");        // default 4-tile menu
+const RICH_DONE = readId("richmenu-done-id.txt");    // shown after a report
+
+// Link a specific rich menu to ONE user (overrides the default for them).
+async function linkRichMenu(userId, richMenuId) {
+  if (!richMenuId) return;
+  try {
+    await fetch(`https://api.line.me/v2/bot/user/${userId}/richmenu/${richMenuId}`, {
+      method: "POST", headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    console.log(`🧩 linked rich menu ${richMenuId} -> ${userId}`);
+  } catch (e) { console.error("rich menu link failed:", String(e)); }
+}
+// Clear a user's personal menu so they fall back to the default main menu.
+async function resetRichMenu(userId) {
+  try {
+    await fetch(`https://api.line.me/v2/bot/user/${userId}/richmenu`, {
+      method: "DELETE", headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    console.log(`🧩 reset rich menu to default for ${userId}`);
+  } catch (e) { console.error("rich menu reset failed:", String(e)); }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ACTION TABLE — new features live here.
 // A rich-menu button / flex button / text alias fires `action=<key>`;
 // add a handler row below. That's all a new feature needs.
@@ -67,6 +97,9 @@ const ACTIONS = {
       reportedAt: new Date().toISOString(),
       note: params.note || null,
     });
+    // Dynamic rich menu demo: swap THIS driver's bottom bar to the "Reported ✓"
+    // state so it reflects where they are in the flow — no chat spam needed.
+    if (RICH_DONE) await linkRichMenu(userId, RICH_DONE);
     if (r.mock) return "✅ Service completion logged (demo — web app not connected yet).\nSet WEBAPP_URL in .env and I'll post it there for real!";
     return r.ok
       ? "✅ Your service completion was submitted to the app. Staff have been notified!"
@@ -81,6 +114,12 @@ const ACTIONS = {
 
   photo: async () =>
     "📷 Just send the photo(s) straight into this chat — I'll save them and forward to the app automatically.",
+
+  // Swap the driver's bottom bar back to the default 4-tile menu.
+  back_to_main: async ({ userId }) => {
+    await resetRichMenu(userId);
+    return "↩️ Back to the main menu — tap the bar below to report another service.";
+  },
 };
 
 function parsePostbackData(data) {
@@ -127,6 +166,7 @@ async function handleEvent(event) {
 async function handleText(event) {
   const t = event.message.text.trim().toLowerCase();
   const userId = event.source.userId;
+  console.log(`💬 ${userId}: "${event.message.text.trim()}"`);
 
   if (t === "menu" || t.startsWith("menu")) {
     return client.replyMessage({ replyToken: event.replyToken, messages: [buildMenu()] });
@@ -137,21 +177,10 @@ async function handleText(event) {
   if (t === "status") return runAction(event, { action: "status" });
   if (t === "photo") return runAction(event, { action: "photo" });
 
-  return client.replyMessage({
-    replyToken: event.replyToken,
-    messages: [{
-      type: "text",
-      text: `You said: "${event.message.text.trim()}"\n\n👇 Or use the menu bar / these buttons:`,
-      quickReply: {
-        items: [
-          { type: "action", action: { type: "message", label: "✅ Done", text: "done" } },
-          { type: "action", action: { type: "message", label: "📷 Photo", text: "photo" } },
-          { type: "action", action: { type: "message", label: "🚗 Status", text: "status" } },
-          { type: "action", action: { type: "message", label: "📋 More", text: "menu" } },
-        ],
-      },
-    }],
-  });
+  // Low-interference default: the always-on rich menu bar already carries the
+  // actions, so we DON'T re-push a menu card / quickReply on every message.
+  return replyText(event.replyToken,
+    `Got it: "${event.message.text.trim()}" 👍\nUse the KitCat menu below to report a service.`);
 }
 
 async function handleImage(event) {
@@ -189,7 +218,8 @@ async function handleImage(event) {
 
 function replyText(replyToken, text) {
   return client.replyMessage({ replyToken, messages: [{ type: "text", text }] })
-    .catch((e) => console.error("reply failed:", e?.body || String(e)));
+    .then(() => console.log(`↩️  replied: "${text.slice(0, 60)}"`))
+    .catch((e) => console.error("❌ reply failed:", e?.body || String(e)));
 }
 
 // Flex menu (same action= keys as the rich menu — single source of truth)

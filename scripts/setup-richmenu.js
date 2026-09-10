@@ -14,6 +14,8 @@ const WEBAPP_URL = (process.env.WEBAPP_URL || "https://example.com").replace(/\/
 const API = "https://api.line.me/v2/bot";
 const ROOT = path.join(__dirname, "..");
 const NAME = "kitcat-driver-menu-v1";
+const DONE_NAME = "kitcat-driver-menu-done";
+const KEEP = new Set([NAME, DONE_NAME]);
 
 async function api(pathname, opts = {}) {
   const res = await fetch(API + pathname, {
@@ -25,48 +27,73 @@ async function api(pathname, opts = {}) {
   return text ? JSON.parse(text) : {};
 }
 
-(async () => {
-  // 1. render image (JPEG: LINE cap is 1MB; flat-color JPEG is tiny)
-  execSync(`sips -s format jpeg -s formatOptions 80 "${path.join(__dirname, "richmenu.svg")}" --out "${path.join(__dirname, "richmenu.jpg")}" > /dev/null`);
-  const img = fs.readFileSync(path.join(__dirname, "richmenu.jpg"));
-  console.log(`🖼  rich menu image: ${img.length} bytes`);
+async function render(svg) {
+  const jpg = svg.replace(/\.svg$/, ".jpg");
+  execSync(`sips -s format jpeg -s formatOptions 80 "${path.join(__dirname, svg)}" --out "${path.join(__dirname, jpg)}" > /dev/null`);
+  return fs.readFileSync(path.join(__dirname, jpg));
+}
 
-  // 2. remove previous kitcat menus
+async function createMenu(img, body) {
+  const { richMenuId } = await api("/richmenu", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  const res = await fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
+    method: "POST", headers: { "Content-Type": "image/jpeg", Authorization: `Bearer ${TOKEN}` }, body: img,
+  });
+  if (!res.ok) throw new Error(`upload content -> ${res.status}: ${await res.text()}`);
+  return richMenuId;
+}
+
+(async () => {
+  // 1. render images (JPEG: LINE cap is 1MB; flat-color JPEG is tiny)
+  const mainImg = await render("richmenu.svg");
+  const doneImg = await render("richmenu-done.svg");
+  console.log(`🖼  main menu ${mainImg.length}B · done-state menu ${doneImg.length}B`);
+
+  // 2. remove previous kitcat menus that we're NOT recreating now
   const { richmenus } = await api("/richmenu/list");
-  for (const m of richmenus.filter((m) => (m.name || "").startsWith("kitcat-") && m.name !== NAME)) {
+  for (const m of richmenus.filter((m) => (m.name || "").startsWith("kitcat-") && !KEEP.has(m.name))) {
     await api(`/richmenu/${m.richMenuId}`, { method: "DELETE" });
-    console.log(`🗑  deleted old menu ${m.richMenuId} (${m.name})`);
+    console.log(`🗑  deleted stale menu ${m.richMenuId} (${m.name})`);
+  }
+  // delete existing copies of the two we manage so we recreate fresh
+  for (const name of KEEP) {
+    const ex = richmenus.find((m) => m.name === name);
+    if (ex) await api(`/richmenu/${ex.richMenuId}`, { method: "DELETE" });
   }
 
-  // 3. create + upload + attach
-  const exists = richmenus.find((m) => m.name === NAME);
-  if (exists) await api(`/richmenu/${exists.richMenuId}`, { method: "DELETE" });
+  const areas4 = (extraUri) => [
+    { bounds: { x: 0, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "Report service done", data: "action=done" } },
+    { bounds: { x: 625, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "Send photo", data: "action=photo" } },
+    { bounds: { x: 1250, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "My status", data: "action=status" } },
+    { bounds: { x: 1875, y: 0, width: 625, height: 843 }, action: { type: "uri", label: "Open web app", uri: extraUri } },
+  ];
 
-  const { richMenuId } = await api("/richmenu", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      size: { width: 2500, height: 843 },
-      selected: false,
-      chatBarColor: "#232b36",
-      chatBarText: "KitCat Menu",
-      name: NAME,
-      areas: [
-        { bounds: { x: 0, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "Report service done", data: "action=done" } },
-        { bounds: { x: 625, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "Send photo", data: "action=photo" } },
-        { bounds: { x: 1250, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "My status", data: "action=status" } },
-        { bounds: { x: 1875, y: 0, width: 625, height: 843 }, action: { type: "uri", label: "Open web app", uri: WEBAPP_URL } },
-      ],
-    }),
+  // 3a. MAIN menu (default, shown to everyone; selected:true = auto-expand the bar)
+  const mainId = await createMenu(mainImg, {
+    size: { width: 2500, height: 843 },
+    selected: true,
+    chatBarColor: "#232b36",
+    chatBarText: "KitCat Menu",
+    name: NAME,
+    areas: areas4(WEBAPP_URL),
   });
+  await api(`/user/all/richmenu/${mainId}`, { method: "POST" });
+  fs.writeFileSync(path.join(ROOT, "richmenu-id.txt"), mainId + "\n");
+  console.log(`✅ Main menu created, auto-expand, attached to ALL chats: ${mainId}`);
 
-  await fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
-    method: "POST",
-    headers: { "Content-Type": "image/jpeg", Authorization: `Bearer ${TOKEN}` },
-    body: img,
-  }).then(async (res) => { if (!res.ok) throw new Error(`upload content -> ${res.status}: ${await res.text()}`); });
-  await api(`/user/all/richmenu/${richMenuId}`, { method: "POST" });
-
-  fs.writeFileSync(path.join(ROOT, "richmenu-id.txt"), richMenuId + "\n");
-  console.log(`✅ Rich menu created & attached to ALL chats: ${richMenuId}`);
+  // 3b. DONE-state menu (server swaps a user onto this after they report)
+  const doneId = await createMenu(doneImg, {
+    size: { width: 2500, height: 843 },
+    selected: true,
+    chatBarColor: "#14532d",
+    chatBarText: "Reported ✓",
+    name: DONE_NAME,
+    areas: [
+      { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: "postback", label: "Reported", data: "action=status" } },
+      { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: "postback", label: "Report another", data: "action=back_to_main" } },
+    ],
+  });
+  fs.writeFileSync(path.join(ROOT, "richmenu-done-id.txt"), doneId + "\n");
+  console.log(`✅ Done-state menu created (not attached; server swaps per-user): ${doneId}`);
 })().catch((e) => { console.error("❌", e.message); process.exit(1); });

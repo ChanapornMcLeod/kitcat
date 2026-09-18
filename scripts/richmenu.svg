@@ -1,27 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2500" height="843" viewBox="0 0 2500 843">
   <rect width="2500" height="843" fill="#232b36"/>
 
-  <!-- Tile 1: Report service done (green) -->
-  <rect x="40" y="40" width="575" height="763" rx="60" fill="#2ea86a"/>
-  <text x="327" y="360" font-family="Helvetica" font-size="220" fill="white" text-anchor="middle">✓</text>
-  <text x="327" y="520" font-family="Helvetica" font-weight="bold" font-size="95" fill="white" text-anchor="middle">SERVICE</text>
-  <text x="327" y="640" font-family="Helvetica" font-weight="bold" font-size="95" fill="white" text-anchor="middle">DONE</text>
+  <!-- Tile 1: Submit maintenance (green) -->
+  <rect x="40" y="40" width="780" height="763" rx="60" fill="#2ea86a"/>
+  <text x="430" y="380" font-family="Helvetica" font-size="220" fill="white" text-anchor="middle">🔧</text>
+  <text x="430" y="540" font-family="Helvetica" font-weight="bold" font-size="86" fill="white" text-anchor="middle">SUBMIT</text>
+  <text x="430" y="650" font-family="Helvetica" font-weight="bold" font-size="70" fill="#eafff3" text-anchor="middle">maintenance</text>
 
-  <!-- Tile 2: Send photo (blue) -->
-  <rect x="655" y="40" width="575" height="763" rx="60" fill="#4a90d9"/>
-  <text x="942" y="360" font-family="Helvetica" font-size="220" fill="white" text-anchor="middle">📷</text>
-  <text x="942" y="520" font-family="Helvetica" font-weight="bold" font-size="95" fill="white" text-anchor="middle">SEND</text>
-  <text x="942" y="640" font-family="Helvetica" font-weight="bold" font-size="95" fill="white" text-anchor="middle">PHOTO</text>
+  <!-- Tile 2: Register driver ID (blue) -->
+  <rect x="860" y="40" width="780" height="763" rx="60" fill="#4a90d9"/>
+  <text x="1250" y="380" font-family="Helvetica" font-size="220" fill="white" text-anchor="middle">🪪</text>
+  <text x="1250" y="540" font-family="Helvetica" font-weight="bold" font-size="86" fill="white" text-anchor="middle">REGISTER</text>
+  <text x="1250" y="650" font-family="Helvetica" font-weight="bold" font-size="70" fill="#eaf3ff" text-anchor="middle">driver ID</text>
 
   <!-- Tile 3: My status (amber) -->
-  <rect x="1270" y="40" width="575" height="763" rx="60" fill="#e8a13d"/>
-  <text x="1557" y="360" font-family="Helvetica" font-size="220" fill="white" text-anchor="middle">🚗</text>
-  <text x="1557" y="520" font-family="Helvetica" font-weight="bold" font-size="95" fill="white" text-anchor="middle">MY</text>
-  <text x="1557" y="640" font-family="Helvetica" font-weight="bold" font-size="95" fill="white" text-anchor="middle">STATUS</text>
-
-  <!-- Tile 4: Open web app (purple) -->
-  <rect x="1885" y="40" width="575" height="763" rx="60" fill="#8e6fd8"/>
-  <text x="2172" y="360" font-family="Helvetica" font-size="220" fill="white" text-anchor="middle">🌐</text>
-  <text x="2172" y="520" font-family="Helvetica" font-weight="bold" font-size="95" fill="white" text-anchor="middle">OPEN</text>
-  <text x="2172" y="640" font-family="Helvetica" font-weight="bold" font-size="95" fill="white" text-anchor="middle">APP</text>
+  <rect x="1680" y="40" width="780" height="763" rx="60" fill="#e8a13d"/>
+  <text x="2070" y="380" font-family="Helvetica" font-size="220" fill="white" text-anchor="middle">🚗</text>
+  <text x="2070" y="540" font-family="Helvetica" font-weight="bold" font-size="86" fill="white" text-anchor="middle">MY</text>
+  <text x="2070" y="650" font-family="Helvetica" font-weight="bold" font-size="70" fill="#fff7ea" text-anchor="middle">status</text>
 </svg>

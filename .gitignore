@@ -4,3 +4,5 @@ webhook.log
 logs/
 uploads/
 scripts/richmenu.jpg
+data-sessions.json
+data-driver-links.json

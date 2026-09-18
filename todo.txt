@@ -1,27 +1,31 @@
 # KitCat LINE Bot — TODO
 
-## ⚡ DO NOW
+## 🔌 NEXT: plug in the real TMS API (when given)
 
-- [ ] **Test on phone**: open KitCat chat → tap the bottom **KitCat Menu** bar
-      (✅ Service done / 📷 Send photo / 🚗 My status / 🌐 Open app) and send a photo
-- [ ] **Push commits** (sandbox can't read ~/.ssh): `cd ~/Dev/aiProjects/kitcatLine && git push`
+- [ ] Fill in `.env`: `TMS_BASE` + `TMS_API_TOKEN` (removes MOCK mode)
+- [ ] Confirm/adjust in `tms.js`:
+      - `TMS_PATHS` — the 6 endpoint paths (api1..api6)
+      - HTTP method per op (currently all POST)
+      - request body field names (see payload contracts below)
+      - `normalizeList()` / mapSchedule/mapVehicle/mapType — response shapes
+- [ ] Decide: does TMS return schedule list keyed by LINE userId or driverRef? (we send both)
 
-## 🔌 Web app integration (the real work — waiting on YOU)
+### Payload contracts our bot sends (adjust if TMS differs)
+| op | body |
+|---|---|
+| api1 listMaintenanceSchedules | `{ driverRef, lineUserId }` → list `{id,label,sub}` |
+| api2 submitMaintenance | `{ driverRef, lineUserId, scheduleId, mileage, shopName, selfService }` |
+| api3 listVehicles | `{ driverRef, lineUserId }` |
+| api4 listMaintenanceTypes | `{ vehicleId, driverRef, lineUserId }` |
+| api5 createMaintenance | `{ driverRef, lineUserId, vehicleId, maintenanceTypeId, mileage, shopName, selfService }` |
+| api6 registerDriver | `{ lineUserId, driverRef }` |
 
-- [ ] Provide **WEBAPP_URL** + **WEBAPP_API_TOKEN** → set in `.env`, restart bot
-- [ ] Agree on endpoints our bot will call (proposed):
-      - `POST /api/line/service-completions` — driver tapped "Service done" `{driverLineUserId, reportedAt, note}`
-      - `POST /api/line/driver-status`      — driver asked status `{driverLineUserId}` → app returns short text
-      - `POST /api/line/driver-photos`      — photo metadata (file saved locally in `uploads/`, multipart upload optional)
-- [ ] Decide auth for webapp endpoints (shared bearer token / API key / JWT)
-- [ ] Decide how staff see reports (existing web app pages? LINE notifications to staff too?)
+## ⚡ Quick test on phone (MOCK mode, live now)
 
-## 🔁 URL stability (later, as agreed)
-
-- [ ] ngrok static domain OR Cloudflare named tunnel + your own domain
-      ⚠️ Until then: every restart changes the tunnel URL — `./start.sh` re-registers
-      automatically, but the old verified URL dies with it (webhook needs no re-Verify
-      since registration re-activates it — keep bot running)
+- [ ] Register: tap 🪪 REGISTER → type e.g. `DRV-0042` → linked
+- [ ] Submit: tap 🔧 SUBMIT → pick schedule → mileage → self-service? → shop → confirm
+- [ ] No schedules case → vehicle → type → mileage → shop/self-service → confirm (api5 create)
+- [ ] Send photo mid-flow → attached as POD
 
 ## 🖥 Machine setup (your Terminal — sandbox blocked these)
 
@@ -31,23 +35,27 @@
       cp ~/Dev/aiProjects/kitcatLine/deploy/launchd/com.kitcat.linebot.plist ~/Library/LaunchAgents/
       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kitcat.linebot.plist
       ```
+- [ ] `cd ~/Dev/aiProjects/kitcatLine && git push`
 
-## 🔐 Hygiene
+## 🔐 Hygiene / later
 
-- [ ] Rotate the LINE Channel Access Token (pasted in chat earlier) — console → Issue new → update `.env`
-- [ ] Keep `.env` out of git (gitignored — verify before manual adds)
+- [ ] Rotate LINE Channel Access Token (was pasted in chat)
+- [ ] POD photo upload to TMS: currently metadata-only forward + local save; add real upload (multipart / presigned URL) when API given
+- [ ] URL stability: ngrok static domain or named tunnel (trycloudflare rotates; watchdog auto-re-registers)
+- [ ] Session store → Redis/DB if multi-instance ever needed
 
-## 🚀 Later
+## ✅ DONE
 
-- [ ] Persist photo uploads to your storage (S3/OSS/NAS) instead of local `uploads/`
-- [ ] Rich menu v2 when requirements firm up (per-role menus? more tiles?)
-- [ ] Staff-side notifications in LINE when drivers submit reports
-- [ ] Deploy to a VPS / server for uptime
+- [x] PoC: webhook, signature verify, rich menu, flex cards, dynamic per-user menu
+- [x] **Functionality1**: submit-maintenance flow (api1→api2; fallback api3→api4→api5) — e2e tested, both paths
+- [x] **Functionality2**: register driver (driverRef input → api6) + local link store
+- [x] Rich menu v2: 🔧 SUBMIT / 🪪 REGISTER / 🚗 STATUS tiles
+- [x] TMS adapter layer with MOCK mode (all 6 ops)
+- [x] Self-healing launcher (watchdog + auto webhook re-registration)
+- [x] GitHub: https://github.com/ChanapornMcLeod/kitcat
 
-## ✅ DONE (2026-09-08)
+## ℹ️ Current live state
 
-- [x] Webhook live & active; messages, flex menu, quick replies working
-- [x] Rich menu bar "KitCat Menu" attached to ALL chats (4 actions)
-- [x] Action dispatcher + mock webapp layer (`callWebApp`) — add features by adding one handler
-- [x] Photo capture: images saved to `uploads/` + forwarded (mock) to web app
-- [x] git repo pushed: https://github.com/ChanapornMcLeod/kitcat
+- Webhook: `https://spin-funny-town-dedicated.trycloudflare.com/webhook` (active, MOCK TMS)
+- Modules: `server.js` (flows) · `tms.js` (API layer) · `flex.js` (cards) · `session.js` (state)
+- Rich menu bar is **mobile-app only** (Mac LINE never shows it; taps still work)

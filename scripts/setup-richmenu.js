@@ -62,11 +62,10 @@ async function createMenu(img, body) {
     if (ex) await api(`/richmenu/${ex.richMenuId}`, { method: "DELETE" });
   }
 
-  const areas4 = (extraUri) => [
-    { bounds: { x: 0, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "Report service done", data: "action=done" } },
-    { bounds: { x: 625, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "Send photo", data: "action=photo" } },
-    { bounds: { x: 1250, y: 0, width: 625, height: 843 }, action: { type: "postback", label: "My status", data: "action=status" } },
-    { bounds: { x: 1875, y: 0, width: 625, height: 843 }, action: { type: "uri", label: "Open web app", uri: extraUri } },
+  const areas4 = () => [
+    { bounds: { x: 0, y: 0, width: 833, height: 843 }, action: { type: "postback", label: "Submit maintenance", data: "action=submit" } },
+    { bounds: { x: 833, y: 0, width: 833, height: 843 }, action: { type: "postback", label: "Register driver ID", data: "action=register" } },
+    { bounds: { x: 1666, y: 0, width: 834, height: 843 }, action: { type: "postback", label: "My status", data: "action=status" } },
   ];
 
   // 3a. MAIN menu (default, shown to everyone; selected:true = auto-expand the bar)
@@ -76,22 +75,22 @@ async function createMenu(img, body) {
     chatBarColor: "#232b36",
     chatBarText: "KitCat Menu",
     name: NAME,
-    areas: areas4(WEBAPP_URL),
+    areas: areas4(),
   });
   await api(`/user/all/richmenu/${mainId}`, { method: "POST" });
   fs.writeFileSync(path.join(ROOT, "richmenu-id.txt"), mainId + "\n");
   console.log(`✅ Main menu created, auto-expand, attached to ALL chats: ${mainId}`);
 
-  // 3b. DONE-state menu (server swaps a user onto this after they report)
+  // 3b. DONE-state menu (server swaps a user onto this after they submit)
   const doneId = await createMenu(doneImg, {
     size: { width: 2500, height: 843 },
     selected: true,
     chatBarColor: "#14532d",
-    chatBarText: "Reported ✓",
+    chatBarText: "Submitted ✓",
     name: DONE_NAME,
     areas: [
-      { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: "postback", label: "Reported", data: "action=status" } },
-      { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: "postback", label: "Report another", data: "action=back_to_main" } },
+      { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: "postback", label: "Submit another", data: "action=submit" } },
+      { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: "postback", label: "Back to menu", data: "action=back_to_main" } },
     ],
   });
   fs.writeFileSync(path.join(ROOT, "richmenu-done-id.txt"), doneId + "\n");

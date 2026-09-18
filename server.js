@@ -131,12 +131,7 @@ async function handlePostback(event) {
       return replyText(event.replyToken, "🪪 Type your driver reference from TMS (e.g. DRV-0042):");
 
     // ---- shared ----
-    case "self_service_no":
-      session.updateCtx(userId, { shopName: "(not self-service, skipped)" });
-      session.set(userId, "shop", { ...(session.get(userId)?.ctx || {}) });
-      return askShop(event);
-
-    case "self_service_yes":
+    case "self_service":
       session.updateCtx(userId, { selfService: true });
       return showSummary(event, userId);
 
@@ -205,11 +200,11 @@ async function handleSessionInput(event, s, raw) {
       const km = Number(raw.replace(/[^0-9.]/g, ""));
       if (!km || km <= 0) return replyText(event.replyToken, "⚠️ Enter a valid mileage number (km). Or send 'cancel'.");
       session.updateCtx(userId, { mileage: km });
-      session.set(userId, "self_service", { ...(session.get(userId)?.ctx || {}) });
-      return reply(event.replyToken, selfServiceCard(userId));
+      session.set(userId, "shop", { ...(session.get(userId)?.ctx || {}) });
+      return reply(event.replyToken, askShopWithQuickReply(userId));
     }
     case "shop": {
-      if (!raw) return replyText(event.replyToken, "⚠️ Type the shop name, or send 'cancel'.");
+      if (!raw) return replyText(event.replyToken, "⚠️ Type the shop name, or tap Self-service.");
       session.updateCtx(userId, { shopName: raw });
       return showSummary(event, userId);
     }
@@ -251,17 +246,18 @@ async function startVehicleFlow(event, ref) {
   }));
 }
 
-function selfServiceCard(userId) {
-  return flex.summaryCard({
-    title: "Self service?",
-    rows: [["Odometer", (session.get(userId)?.ctx?.mileage ?? "") + " km"]],
-    confirmLabel: "✅ Yes, self-service",
-    confirmData: "action=self_service_yes",
-  });
-}
-
-function askShop(event) {
-  return replyText(event.replyToken, "🏪 Type the service shop name:");
+// Shop step: quick-reply chip for self-service, or just type the shop name.
+function askShopWithQuickReply(userId) {
+  const km = session.get(userId)?.ctx?.mileage ?? "";
+  return {
+    type: "text",
+    text: `🏪 Who did the service?\n• Tap Self-service (did it yourself), or\n• Type the shop / provider name\n\n🚗 Odometer: ${km} km`,
+    quickReply: {
+      items: [
+        { type: "action", action: { type: "postback", label: "🙌 Self-service", data: "action=self_service" } },
+      ],
+    },
+  };
 }
 
 function showSummary(event, userId) {
